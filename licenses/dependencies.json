@@ -44,5 +44,71 @@
       "LICENSE",
       "THIRD-PARTY-LICENSE"
     ]
+  },
+  {
+    "name": "org.eclipse.jetty:jetty-server",
+    "version": "12.1.14",
+    "license": "Apache-2.0 OR EPL-2.0",
+    "selectedLicense": "Apache-2.0",
+    "scope": "relocated-runtime",
+    "files": [
+      "jetty/LICENSE",
+      "jetty/APACHE-2.0.txt",
+      "jetty/NOTICE.txt"
+    ]
+  },
+  {
+    "name": "org.eclipse.jetty:jetty-http",
+    "version": "12.1.14",
+    "license": "Apache-2.0 OR EPL-2.0",
+    "selectedLicense": "Apache-2.0",
+    "scope": "relocated-runtime",
+    "files": [
+      "jetty/LICENSE",
+      "jetty/APACHE-2.0.txt",
+      "jetty/NOTICE.txt"
+    ]
+  },
+  {
+    "name": "org.eclipse.jetty:jetty-io",
+    "version": "12.1.14",
+    "license": "Apache-2.0 OR EPL-2.0",
+    "selectedLicense": "Apache-2.0",
+    "scope": "relocated-runtime",
+    "files": [
+      "jetty/LICENSE",
+      "jetty/APACHE-2.0.txt",
+      "jetty/NOTICE.txt"
+    ]
+  },
+  {
+    "name": "org.eclipse.jetty:jetty-util",
+    "version": "12.1.14",
+    "license": "Apache-2.0 OR EPL-2.0",
+    "selectedLicense": "Apache-2.0",
+    "scope": "relocated-runtime",
+    "files": [
+      "jetty/LICENSE",
+      "jetty/APACHE-2.0.txt",
+      "jetty/NOTICE.txt"
+    ]
+  },
+  {
+    "name": "org.slf4j:slf4j-api",
+    "version": "2.0.20",
+    "license": "MIT",
+    "scope": "relocated-runtime",
+    "files": [
+      "slf4j/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "org.slf4j:slf4j-nop",
+    "version": "2.0.20",
+    "license": "MIT",
+    "scope": "relocated-runtime",
+    "files": [
+      "slf4j/LICENSE.txt"
+    ]
   }
 ]

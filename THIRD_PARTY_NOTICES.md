@@ -2,11 +2,13 @@
 
 Remote Datapack's own code is licensed under Apache-2.0. The following components
 retain their original licenses. Their full copyright and license notices are
-copied without modification from the exact npm packages installed by
-`frontend/package-lock.json`.
+copied without modification from the pinned npm packages or upstream release tags.
+Java runtime versions are pinned in `gradle.lockfile` and verified by SHA-256.
 
 | Component | Version | Included portion | License notices |
 | --- | --- | --- | --- |
+| Eclipse Jetty (server, HTTP, I/O, util) | 12.1.14 | Embedded HTTP server, relocated packages | [Apache-2.0](licenses/jetty/APACHE-2.0.txt), [upstream LICENSE](licenses/jetty/LICENSE), [NOTICE](licenses/jetty/NOTICE.txt) |
+| SLF4J API and NOP provider | 2.0.20 | Private logger for embedded server | [MIT](licenses/slf4j/LICENSE.txt) |
 | React | 19.3.1 | Browser runtime | [MIT](licenses/react/LICENSE) |
 | React DOM | 19.3.1 | Browser renderer | [MIT](licenses/react-dom/LICENSE) |
 | Scheduler | 0.28.0 | React DOM runtime dependency | [MIT](licenses/scheduler/LICENSE) |
@@ -27,6 +29,14 @@ JAR. Paper/Minecraft, the installed JDK and Gradle are separately
 provided components; this project does not relicense them. No font files or
 Minecraft skin textures are bundled in the plugin JAR. Runtime skin images and
 external artwork retain their respective rights.
+
+Jetty is offered under Apache-2.0 OR EPL-2.0; this distribution uses the Apache-2.0 option.
+Its packages and SLF4J packages are relocated to `studio.manafield.remotedatapack.internal`
+to isolate them from other plugins. This bytecode/resource relocation is the modification
+made to these dependencies. The NOP provider suppresses dependency logs so URLs, headers
+and credentials cannot leak through a server-wide logging configuration. Jetty sources
+are available at https://github.com/jetty/jetty.project/tree/jetty-12.1.14 and SLF4J
+sources at https://github.com/qos-ch/slf4j/tree/v_2.0.20.
 
 ## Distribution layout
 

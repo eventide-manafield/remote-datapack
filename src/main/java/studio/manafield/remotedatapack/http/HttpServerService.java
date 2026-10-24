@@ -1,7 +1,6 @@
 package studio.manafield.remotedatapack.http;
 
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import studio.manafield.remotedatapack.config.WebConfig;
 import studio.manafield.remotedatapack.auth.*;
 import studio.manafield.remotedatapack.datapack.DatapackService;
@@ -9,7 +8,6 @@ import studio.manafield.remotedatapack.file.FileService;
 import studio.manafield.remotedatapack.apply.ApplyCoordinator;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
@@ -23,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /** Web assets, liveness and optional authenticated session endpoints. */
 public final class HttpServerService implements AutoCloseable {
-    private final HttpServer server;
+    private final EmbeddedHttpServer server;
     private final ThreadPoolExecutor workers;
     private final ScheduledThreadPoolExecutor deadlines;
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -51,11 +49,11 @@ public final class HttpServerService implements AutoCloseable {
         deadlines = new ScheduledThreadPoolExecutor(1, threads("deadline"));
         deadlines.setRemoveOnCancelPolicy(true);
         deadlines.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
-        HttpServer created = null;
+        EmbeddedHttpServer created = null;
         SessionHttpHandler createdAuth = null;
         try {
-            created = HttpServer.create(new InetSocketAddress(config.bind(), config.port()), config.queueCapacity());
-            String origin = authConfig == null ? "" : authConfig.origin(config, created.getAddress().getPort());
+            created = new EmbeddedHttpServer(config, workers, deadlines, this::handle);
+            String origin = authConfig == null ? "" : authConfig.origin(config, created.port());
             auth = origin.isEmpty() ? null : new SessionHttpHandler(authConfig, origin, access, gate);
             createdAuth = auth;
             if(auth!=null && coordinator!=null)auth.applyStatus(coordinator::json);
@@ -63,13 +61,11 @@ public final class HttpServerService implements AutoCloseable {
             files = auth == null || fileService == null ? null : new FilesHttpHandler(auth, access, gate, fileService);
             apply = auth == null || coordinator == null ? null : new ApplyHttpHandler(auth,access,gate,coordinator);
             templates = auth == null || format == null ? null : new TemplatesHttpHandler(auth, access, gate, format);
-            created.setExecutor(workers);
-            created.createContext("/", this::handle);
             server = created;
             created.start();
         } catch (IOException | RuntimeException e) {
             if (createdAuth != null) createdAuth.close();
-            if (created != null) created.stop(0);
+            if (created != null) created.close();
             workers.shutdownNow();
             deadlines.shutdownNow();
             throw e;
@@ -77,34 +73,29 @@ public final class HttpServerService implements AutoCloseable {
     }
 
     public static HttpServerService start(WebConfig config, WebAssets assets) throws IOException {
-        HttpServerLimits.validate();
         return new HttpServerService(config, assets, null, null, null, null, null, null, null);
     }
 
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig, AccessManager access, MainThreadGate gate) throws IOException {
-        HttpServerLimits.validate();
         return new HttpServerService(config, assets, authConfig, access, gate, null, null, null, null);
     }
 
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig,
                                           AccessManager access, MainThreadGate gate, DatapackService datapacks) throws IOException {
-        HttpServerLimits.validate();
         return new HttpServerService(config, assets, authConfig, access, gate, datapacks, null, null, null);
     }
 
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig,
                                           AccessManager access, MainThreadGate gate, DatapackService datapacks, FileService files) throws IOException {
-        HttpServerLimits.validate();
         return new HttpServerService(config, assets, authConfig, access, gate, datapacks, files, null, null);
     }
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig,
             AccessManager access, MainThreadGate gate, DatapackService datapacks, FileService files, ApplyCoordinator coordinator) throws IOException {
-        HttpServerLimits.validate();return new HttpServerService(config,assets,authConfig,access,gate,datapacks,files,coordinator,null);
+        return new HttpServerService(config,assets,authConfig,access,gate,datapacks,files,coordinator,null);
     }
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig,
             AccessManager access, MainThreadGate gate, DatapackService datapacks, FileService files,
             ApplyCoordinator coordinator, studio.manafield.remotedatapack.datapack.PackFormat format) throws IOException {
-        HttpServerLimits.validate();
         return new HttpServerService(config, assets, authConfig, access, gate, datapacks, files, coordinator, format);
     }
     public String authOrigin() { return auth == null ? "" : auth.origin(); }
@@ -122,7 +113,7 @@ public final class HttpServerService implements AutoCloseable {
         if (closed.get()) { exchange.close(); return; }
         java.util.concurrent.ScheduledFuture<?> deadline;
         try {
-            deadline = deadlines.schedule(exchange::close, config.responseTimeoutSeconds(), TimeUnit.SECONDS);
+            deadline = deadlines.schedule(() -> { if (exchange instanceof JettyExchange jetty) jetty.abort(); else exchange.close(); }, config.responseTimeoutSeconds(), TimeUnit.SECONDS);
         } catch (java.util.concurrent.RejectedExecutionException e) {
             exchange.close();
             return;
@@ -185,7 +176,7 @@ public final class HttpServerService implements AutoCloseable {
         int port = authority.getPort() == -1 ? 80 : authority.getPort();
         // Keep loopback health checks available without trusting arbitrary external Host headers.
         if (Set.of("localhost", "127.0.0.1", "[::1]", "[0:0:0:0:0:0:0:1]").contains(host)
-                && port == server.getAddress().getPort()) return true;
+                && port == server.port()) return true;
         if (config.publicUrl().isEmpty()) return false;
         URI expected = URI.create(config.publicUrl());
         return host.equals(expected.getHost().toLowerCase(java.util.Locale.ROOT))
@@ -224,14 +215,14 @@ public final class HttpServerService implements AutoCloseable {
         }
     }
 
-    public int port() { return server.getAddress().getPort(); }
+    public int port() { return server.port(); }
 
     @Override public void close() {
         if (closed.compareAndSet(false, true)) {
             if(coordinator!=null)coordinator.close();
             if (fileService != null) fileService.close();
             if (auth != null) auth.close();
-            server.stop(0);
+            server.close();
             deadlines.shutdownNow();
             workers.shutdownNow();
         }

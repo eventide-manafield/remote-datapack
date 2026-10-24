@@ -6,6 +6,8 @@
 
 [**최신 릴리스 · 1.3.0 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.3.0)
 
+현재 개발 버전은 **1.3.1-SNAPSHOT**입니다. JVM 옵션 없이 시작하는 개선은 위 1.3.0 공개 릴리스에는 포함되지 않았습니다.
+
 ## 지원 버전
 
 **`remote-datapack-1.3.0.jar` 하나를 아래 모든 지원 버전에서 사용합니다.** Java는 플러그인의 최소 요구사항뿐 아니라 실행할 Paper 서버의 요구사항도 충족해야 합니다.
@@ -54,13 +56,8 @@ web:
 
 **직접 HTTP는 암호화되지 않습니다.** 인증 정보와 파일 전송을 암호화하려면 아래 HTTPS 프록시 모드를 사용하세요. Cloudflare DNS를 이용할 때 직접 접속 주소는 **DNS only**로 설정합니다. HSTS가 적용된 도메인에서는 브라우저가 HTTPS로 바꿀 수 있으므로 별도 주소 또는 HTTPS 모드를 사용하세요.
 
-1.3.0에서는 헤더 크기 제한 옵션을 실제 JDK 속성인 `sun.net.httpserver.maxReqHeaderSize`로 확인합니다. 이전 안내의 `jdk.httpserver.maxReqHeaderSize`를 사용 중이라면 시작 명령에서 아래 옵션으로 바꿔 주세요. 잘못된 옵션만 있으면 웹 리스너를 열지 않습니다.
+**추가 JVM 옵션은 필요하지 않습니다.** 웹서버의 연결 수·요청 헤더 크기·시간 제한은 플러그인 내부에서 적용합니다. 기존에 Remote Datapack을 위해 넣었던 `sun.net.httpserver.*` 및 `jdk.httpserver.*` 옵션도 이 버전에는 필요하지 않습니다. 다른 플러그인이 사용하는 옵션은 해당 플러그인의 안내를 따르세요.
 
-내장 웹서버의 연결·헤더 제한을 위해 아래 JVM 옵션을 서버 시작 명령의 `-jar` 앞에 넣어야 합니다. 기존 설치에 이미 있다면 유지합니다.
-
-```text
--Dsun.net.httpserver.maxReqTime=10 -Dsun.net.httpserver.maxRspTime=10 -Djdk.httpserver.maxConnections=64 -Dsun.net.httpserver.maxReqHeaders=64 -Dsun.net.httpserver.maxReqHeaderSize=16384
-```
 
 ## 사용 예시
 
@@ -102,6 +99,12 @@ React 등 포함된 외부 구성요소에는 각자의 라이선스가 적용�
 `GET /api/templates`는 대상 버전 정보를 반환하고 `POST /api/templates`는 `namespace`, `author`, `description` JSON을 받아 ZIP을 반환합니다. 인게임 연동 세션·권한 검사를 사용하며 POST에는 정확한 Origin과 세션 CSRF 토큰이 필요합니다. 요청은 8 KiB 이하로 제한하고 ZIP은 메모리에서만 생성합니다. 생성 후에도 세션을 다시 검증합니다.
 
 버전 정보는 공식 Paper 배포 JAR에 포함된 Mojang `version.json`의 `pack_version`을 확인해 고정했습니다. 형식 변경 근거는 [Minecraft 1.21.9 변경 내역](https://www.minecraft.net/en-us/article/minecraft-java-edition-1-21-9), Java 요구사항은 [Paper 공식 문서](https://docs.papermc.io/paper/getting-started/#requirements)를 참고하세요. 빌드는 공식 저장소의 `paper-api:1.21.9-R0.1-SNAPSHOT`(확인한 아티팩트: `20251007.115206-20`)을 사용합니다. 과거 POM의 Adventure SNAPSHOT 의존성 대신 API JAR와 필요한 컴파일 전용 타입의 버전을 명시하고, 의존성 잠금 및 SHA-256 검증을 유지합니다. API 아티팩트가 바뀌면 체크섬 검증에 실패하므로 검토 없이 새 내용을 받아들이지 않습니다. Paper API와 컴파일 전용 의존성은 배포 JAR에 넣지 않으며 서버에 따로 설치할 필요도 없습니다.
+
+## 내장 웹서버
+
+Jetty 12.1.14의 HTTP/1.1 서버를 JAR에 포함하며, 라이브러리 패키지를 플러그인 전용 경로로 옮겨 다른 플러그인과 분리합니다. JDK 전역 시스템 속성을 읽거나 변경하지 않으며, 다른 플러그인이 먼저 JDK 웹서버를 시작해도 제한이 유지됩니다. JDK의 `HttpExchange`는 기존 핸들러용 어댑터 인터페이스로만 사용합니다.
+
+연결은 최대 64개, 요청 헤더는 16 KiB·64개로 제한합니다. 연결 후 헤더 및 작업 대기 시간은 최대 10초이며, 처리 시작 후에는 `web.response-timeout-seconds`(기본 10초) 이내에 응답을 완료해야 합니다. 조금씩 데이터를 보내도 헤더 제한 시간을 연장하지 않습니다. 요청 처리는 기존의 제한된 워커·대기열을 사용하고 응답 후 연결을 닫습니다. 접근 로그는 생성하지 않으며 파서 오류에 URL이나 자격 증명을 넣지 않습니다. 인증·CSRF·Origin 검사와 ZIP 검증 정책은 유지됩니다.
 
 ## 데이터팩 목록과 보호 정책
 
@@ -168,7 +171,7 @@ apply:
 
 Windows에서는 `gradlew.bat build`. Gradle은 `npm ci` → TypeScript 검사·Vite 빌드 → Java 컴파일 → JAR 패키징을 수행합니다. 실행 시에는 Node/npm/Gradle이 필요하지 않습니다.
 
-결과: `build/libs/remote-datapack-1.3.0.jar`.
+결과: `build/libs/remote-datapack-1.3.1-SNAPSHOT.jar`.
 
 `gradle.lockfile`, `gradle/verification-metadata.xml`, `frontend/package-lock.json`으로 의존성을 고정합니다. Paper API는 `compileOnly`이며 JAR에 포함하지 않습니다. 운영 라이브러리를 런타임에 추가 다운로드하는 플러그인 설정도 없습니다. 빌드 산출물의 파일 순서와 타임스탬프를 고정합니다.
 

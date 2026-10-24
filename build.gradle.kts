@@ -1,7 +1,10 @@
-plugins { java }
+plugins {
+    java
+    id("com.gradleup.shadow") version "9.6.1"
+}
 
 group = "studio.manafield"
-version = "1.3.0"
+version = "1.3.1-SNAPSHOT"
 val pluginVersion = version.toString()
 
 java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
@@ -24,6 +27,8 @@ repositories {
 }
 
 dependencies {
+    implementation("org.eclipse.jetty:jetty-server:12.1.14")
+    implementation("org.slf4j:slf4j-nop:2.0.20")
     // Artifact-only: the historic POM imports a mutable Adventure SNAPSHOT BOM.
     // Checksum-pin the API snapshot and declare the compile-time types we use explicitly.
     compileOnly("io.papermc.paper:paper-api:1.21.9-R0.1-SNAPSHOT@jar") { isTransitive = false }
@@ -75,8 +80,20 @@ tasks.processResources {
     from(files("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md")) { into("META-INF") }
     from("licenses") { into("META-INF/licenses") }
 }
-tasks.jar {
+// The distributable is the single JAR containing the private HTTP libraries.
+tasks.jar { enabled = false }
+
+// Keep the HTTP implementation private to this plugin, including its silent logger.
+// No server-provided libraries or JVM-global logging configuration are required.
+tasks.shadowJar {
     archiveFileName.set("remote-datapack-${pluginVersion}.jar")
+    archiveClassifier.set("")
+    relocate("org.eclipse.jetty", "studio.manafield.remotedatapack.internal.jetty")
+    relocate("org.slf4j", "studio.manafield.remotedatapack.internal.slf4j")
+    filesMatching("META-INF/services/**") { duplicatesStrategy = DuplicatesStrategy.INCLUDE }
+    mergeServiceFiles()
+    exclude("module-info.class", "META-INF/versions/**/module-info.class", "META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA")
     isPreserveFileTimestamps = false
     isReproducibleFileOrder = true
 }
+tasks.assemble { dependsOn(tasks.shadowJar) }
