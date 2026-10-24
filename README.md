@@ -7,9 +7,6 @@
 [**최신 릴리스 · 1.3.1 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.3.1)
 
 ## 지원 버전
-
-**`remote-datapack-1.3.1.jar` 하나를 아래 모든 지원 버전에서 사용합니다.** Java는 플러그인의 최소 요구사항뿐 아니라 실행할 Paper 서버의 요구사항도 충족해야 합니다.
-
 | Minecraft / Paper 버전 | 필요한 Java | 데이터팩 형식 | 실제 실행·웹 적용 검증 Paper 빌드 |
 |---|---|---|---|
 | 1.21.9 | 21 이상 | 88.0 | 59 |
@@ -20,7 +17,7 @@
 | 26.2 | 25 이상 | 107.1 | 134 |
 | 26.3 | 25 이상 | 121.0 | 211, 218 |
 
-- **Java 21 호환 JAR여도 26.1 이상 서버는 Java 25 이상이 필요합니다.** 실제 실행 검증은 1.21.x에서 Java 21, 26.x에서 Java 25로 진행했습니다. Java 요구사항은 [Paper 공식 문서](https://docs.papermc.io/paper/getting-started/#requirements)를 참고하세요.
+- **26.1 이상 서버는 Java 25 이상이 필요합니다.** 실제 실행 검증은 1.21.x에서 Java 21, 26.x에서 Java 25로 진행했습니다. Java 요구사항은 [Paper 공식 문서](https://docs.papermc.io/paper/getting-started/#requirements)를 참고하세요.
 - 표에 있는 Minecraft 버전의 다른 Paper 빌드에서는 웹 인증·파일 관리·템플릿 생성을 제공하지만, **변경사항 적용은 위 검증 빌드에서만 활성화**합니다.
 - **1.21.9 이전 버전과 표에 없는 Minecraft 버전·스냅샷은 지원하지 않습니다.** 향후 버전까지 자동으로 호환된다는 의미는 아니며, 미등록 버전에서는 플러그인을 비활성화합니다.
 - Paper용 플러그인으로, Spigot·Folia 및 다른 서버 구현체의 호환성은 보증하지 않습니다.
