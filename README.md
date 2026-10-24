@@ -4,7 +4,7 @@
 
 Minecraft/Paper **26.3**, Java **25**용 단일 JAR 플러그인입니다.
 
-[**최신 릴리스 · 1.1.0 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.1.0)
+[**최신 릴리스 · 1.1.1 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.1.1)
 
 ## 현재 기능
 
@@ -131,7 +131,7 @@ apply:
 
 Windows에서는 `gradlew.bat build`. Gradle은 `npm ci` → TypeScript 검사·Vite 빌드 → Java 컴파일 → JAR 패키징을 수행합니다. 실행 시에는 Node/npm/Gradle이 필요하지 않습니다.
 
-결과: `build/libs/remote-datapack-1.1.0.jar`.
+결과: `build/libs/remote-datapack-1.1.1.jar`.
 
 `gradle.lockfile`, `gradle/verification-metadata.xml`, `frontend/package-lock.json`으로 의존성을 고정합니다. Paper API는 `compileOnly`이며 JAR에 포함하지 않습니다. 운영 라이브러리를 런타임에 추가 다운로드하는 플러그인 설정도 없습니다. 빌드 산출물의 파일 순서와 타임스탬프를 고정합니다.
 
@@ -143,14 +143,22 @@ HTTPS 프록시 모드에서는 운영자가 루프백 리스너에 접근 가�
 
 모든 모드에서 경로 접두어, userinfo, query, fragment가 붙은 공개 주소는 거부합니다. `X-Forwarded-*`로 공개 URL이나 권한을 결정하지 않습니다. 직접 HTTP에서는 설정된 공개 Host와 포트만 받으며, 루프백 health 점검도 허용합니다.
 
-HTTPS 프록시 설정 예시:
+### HTTPS로 접속하기
+
+HTTPS는 **리버스 프록시에서 인증서를 설정**해 사용합니다. 프록시가 HTTPS 접속을 받아 플러그인의 내부 HTTP 웹서버로 전달합니다. 플러그인 자체가 인증서를 발급하거나 HTTPS 연결을 직접 받지는 않습니다.
+
+```text
+브라우저 → HTTPS :13532 [프록시] → HTTP :8765 [플러그인]
+```
+
+플러그인 설정 예시:
 
 ```yaml
 web:
   mode: https-proxy
   bind: 127.0.0.1
-  port: 13532
-  public-url: "https://packs.example.com"
+  port: 8765
+  public-url: "https://packs.example.com:13532"
   local-development: false
 auth:
   trust-proxy-identity: false
@@ -160,7 +168,21 @@ auth:
   session-ttl-minutes: 30
 ```
 
-실제 `config.yml`의 다른 필드는 그대로 유지합니다. HTTPS 프록시 쿠키는 `__Host-remotedatapack_session; Secure; HttpOnly; SameSite=Strict; Path=/`이며 Domain은 없습니다. 세션 ID와 토큰은 SHA-256 해시를 키로 메모리에만 저장합니다. 쿠키는 브라우저 세션 쿠키지만 서버는 기본 30분 절대 만료와 30분 유휴 만료를 검사합니다. 폴링은 유휴 시간을 갱신해도 절대 만료를 연장하지 않습니다.
+- `port`: 프록시가 연결할 **내부 포트**입니다. `8765`는 예시이며, 사용하지 않는 포트로 지정합니다. 기본 포트 `13532`가 자동으로 바뀌는 것은 아닙니다.
+- `public-url`: 사용자가 접속할 **외부 HTTPS 주소**입니다. `/rdpack`도 이 주소로 링크를 발급합니다.
+- 프록시는 외부 `13532` 포트에서 HTTPS를 받고 내부 `http://127.0.0.1:8765`로 전달하도록 설정합니다.
+- 인증서는 접속 도메인에 유효해야 합니다. 기존 인증서가 해당 도메인을 포함한다면 재사용할 수 있으며, 포트 번호는 인증서에 영향을 주지 않습니다.
+- HTTP 접속을 HTTPS로 전환하려면 프록시에 리다이렉트도 설정합니다. 같은 포트에서 HTTP와 HTTPS를 함께 받을 수 있는지는 사용하는 프록시의 지원 여부를 확인하세요.
+
+**내부 포트와 외부 포트는 같을 필요가 없습니다.** 같은 네트워크 네임스페이스에서 프록시가 `0.0.0.0:13532`를 사용하면 플러그인이 `127.0.0.1:13532`를 동시에 사용할 수 없으므로 위 예시처럼 나눕니다. 별도 네트워크 네임스페이스라면 양쪽에서 같은 번호를 사용할 수 있지만, 프록시가 플러그인에 접근할 경로도 구성해야 합니다. 포트를 나누는 것은 충돌 방지를 위한 것으로 성능 차이는 없습니다.
+
+외부에는 프록시 포트만 개방하고 플러그인의 내부 포트는 공개하지 않습니다. 실제 `config.yml`의 다른 필드는 유지하고, 변경 후에는 Minecraft 서버를 정상 재시작하세요.
+
+> Docker에서 프록시의 `127.0.0.1`은 별도 Minecraft 컨테이너를 가리키지 않습니다. 위 예시는 프록시와 Minecraft가 같은 네트워크 네임스페이스를 사용하는 등, 프록시가 플러그인의 루프백 리스너에 접근할 수 있는 구성을 전제로 합니다.
+
+### 세션과 인증
+
+HTTPS 프록시 쿠키는 `__Host-remotedatapack_session; Secure; HttpOnly; SameSite=Strict; Path=/`이며 Domain은 없습니다. 세션 ID와 토큰은 SHA-256 해시를 키로 메모리에만 저장합니다. 쿠키는 브라우저 세션 쿠키지만 서버는 기본 30분 절대 만료와 30분 유휴 만료를 검사합니다. 폴링은 유휴 시간을 갱신해도 절대 만료를 연장하지 않습니다.
 
 `online-mode=true`를 기본 신원 근거로 사용합니다. 오프라인 모드는 인증을 차단합니다. 인증된 프록시 전달 및 직접 게임 접속 차단을 운영자가 보장한 경우에만 `auth.trust-proxy-identity: true`를 명시할 수 있습니다. 이 설정은 프록시 인증을 구현하거나 검증하지 않습니다.
 
