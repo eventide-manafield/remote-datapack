@@ -4,13 +4,11 @@
 
 게임에 접속한 관리자가 웹에서 데이터팩을 관리하는 Paper 플러그인입니다. **1.3.0부터 Paper 1.21.9 이상으로 지원 범위를 확대**하며, 지원 버전에서 같은 JAR를 사용합니다.
 
-[**최신 릴리스 · 1.3.0 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.3.0)
-
-현재 개발 버전은 **1.3.1-SNAPSHOT**입니다. JVM 옵션 없이 시작하는 개선은 위 1.3.0 공개 릴리스에는 포함되지 않았습니다.
+[**최신 릴리스 · 1.3.1 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.3.1)
 
 ## 지원 버전
 
-**`remote-datapack-1.3.0.jar` 하나를 아래 모든 지원 버전에서 사용합니다.** Java는 플러그인의 최소 요구사항뿐 아니라 실행할 Paper 서버의 요구사항도 충족해야 합니다.
+**`remote-datapack-1.3.1.jar` 하나를 아래 모든 지원 버전에서 사용합니다.** Java는 플러그인의 최소 요구사항뿐 아니라 실행할 Paper 서버의 요구사항도 충족해야 합니다.
 
 | Minecraft / Paper 버전 | 필요한 Java | 데이터팩 형식 | 실제 실행·웹 적용 검증 Paper 빌드 |
 |---|---|---|---|
@@ -39,7 +37,9 @@ Paper 1.21.9-59와 26.1.1-29는 공식 다운로드의 ALPHA 빌드로 호환성
 
 ## 빠른 설정 · 직접 HTTP
 
-JAR를 `plugins/`에 넣고 서버를 시작한 뒤, 생성된 `plugins/RemoteDatapack/config.yml`에서 외부 주소를 입력합니다.
+**JAR를 `plugins/`에 넣고 서버를 시작하면 내장 웹서버가 켜집니다.** 별도 JVM 옵션이나 웹서버 설치는 필요하지 않습니다. 기본 포트는 **13532**입니다.
+
+외부에서 인증 링크로 접속하려면 생성된 `plugins/RemoteDatapack/config.yml`에 실제 접속 주소를 입력합니다.
 
 ```yaml
 web:
@@ -171,7 +171,7 @@ apply:
 
 Windows에서는 `gradlew.bat build`. Gradle은 `npm ci` → TypeScript 검사·Vite 빌드 → Java 컴파일 → JAR 패키징을 수행합니다. 실행 시에는 Node/npm/Gradle이 필요하지 않습니다.
 
-결과: `build/libs/remote-datapack-1.3.1-SNAPSHOT.jar`.
+결과: `build/libs/remote-datapack-1.3.1.jar`.
 
 `gradle.lockfile`, `gradle/verification-metadata.xml`, `frontend/package-lock.json`으로 의존성을 고정합니다. Paper API는 `compileOnly`이며 JAR에 포함하지 않습니다. 운영 라이브러리를 런타임에 추가 다운로드하는 플러그인 설정도 없습니다. 빌드 산출물의 파일 순서와 타임스탬프를 고정합니다.
 

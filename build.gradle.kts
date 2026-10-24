@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "studio.manafield"
-version = "1.3.1-SNAPSHOT"
+version = "1.3.1"
 val pluginVersion = version.toString()
 
 java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
