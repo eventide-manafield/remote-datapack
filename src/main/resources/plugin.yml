@@ -1,0 +1,15 @@
+name: RemoteDatapack
+version: '${version}'
+main: studio.manafield.remotedatapack.RemoteDatapackPlugin
+api-version: '26.3'
+description: In-game authenticated web manager for Minecraft datapacks
+commands:
+  remotedatapack:
+    description: Opens or manages your Remote Datapack web session
+    usage: /remotedatapack [status|revoke]
+    aliases: [rdpack]
+    permission: remotedatapack.manage
+permissions:
+  remotedatapack.manage:
+    description: Allows use of Remote Datapack management
+    default: op

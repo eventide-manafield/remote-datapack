@@ -1,0 +1,35 @@
+# ZIP changes never reload automatically. Apply explicitly after confirmation.
+web:
+  enabled: true
+  bind: 127.0.0.1
+  port: 8765
+  public-url: ""
+  # Explicit loopback HTTP development mode. Never proxy/publish this mode.
+  local-development: false
+  workers: 4
+  queue-capacity: 32
+  response-timeout-seconds: 10
+
+auth:
+  link-ttl-seconds: 60
+  idle-timeout-minutes: 30
+  max-sessions-per-player: 1
+  session-ttl-minutes: 30
+  # Only for an authenticated, correctly secured proxy. Not an offline-mode login bypass.
+  trust-proxy-identity: false
+# Only the effective main world datapacks directory can be managed.
+packs:
+  directory: auto
+  # Upload: 1..20 MiB; one disk operation at a time. Backups remain inside datapacks as hidden .bak files.
+  max-upload-mib: 20
+  max-parallel-uploads: 1
+  backup-count-per-pack: 3
+  backup-max-total-mib: 200
+ui:
+  # Display name for the page title and server heading. Plain text, 1..80 characters.
+  server-name: "Minecraft Server"
+  session-poll-seconds: 5
+
+apply:
+  # Global cooldown measured from reload completion, including failed attempts. 1..3600 seconds.
+  cooldown-seconds: 30

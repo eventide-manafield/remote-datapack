@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.bat text eol=crlf whitespace=cr-at-eol
+*.jar binary
+
+# Markdown uses trailing spaces for hard line breaks.
+*.md whitespace=-blank-at-eol
+# Preserve upstream notices byte-for-byte, including their whitespace.
+licenses/** -text -whitespace

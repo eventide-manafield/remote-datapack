@@ -1,0 +1,11 @@
+.gradle/
+build/
+frontend/node_modules/
+frontend/dist/
+.idea/
+*.iml
+__pycache__/
+*.pyc
+
+# Local preview archive.
+remote-datapack-ui-template.zip
