@@ -2,11 +2,30 @@
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-Support_Manafield-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000)](https://buymeacoffee.com/manafield)
 
-Paper **1.21.9 이상**을 대상으로 한 **Java 21 호환 테스트판**입니다. 같은 JAR를 사용하며 1.21.x는 Java 21 이상, 26.1 이상 서버는 Java 25 이상이 필요합니다. 지원하는 세부 버전과 웹 적용 빌드는 아래 개발자 문서에 명시합니다.
+게임에 접속한 관리자가 웹에서 데이터팩을 관리하는 Paper 플러그인입니다. **1.3.0부터 Paper 1.21.9 이상으로 지원 범위를 확대**하며, 지원 버전에서 같은 JAR를 사용합니다.
 
-[**최신 공개 릴리스 · 1.1.1 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.1.1)
+[**최신 릴리스 · 1.3.0 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.3.0)
 
-현재 테스트 버전은 **1.2.0-java21-SNAPSHOT**이며 로컬 `test/java21` 브랜치에서 개발 중입니다. 기존 26.1 이상용 작업과 분리되어 있으며, 위 1.1.1 공개 릴리스에 포함되지 않았습니다.
+## 지원 버전
+
+**`remote-datapack-1.3.0.jar` 하나를 아래 모든 지원 버전에서 사용합니다.** Java는 플러그인의 최소 요구사항뿐 아니라 실행할 Paper 서버의 요구사항도 충족해야 합니다.
+
+| Minecraft / Paper 버전 | 필요한 Java | 데이터팩 형식 | 실제 실행·웹 적용 검증 Paper 빌드 |
+|---|---|---|---|
+| 1.21.9 | 21 이상 | 88.0 | 59 |
+| 1.21.10 | 21 이상 | 88.0 | 130 |
+| 1.21.11 | 21 이상 | 94.1 | 132 |
+| 26.1.1 | 25 이상 | 101.1 | 29 |
+| 26.1.2 | 25 이상 | 101.1 | 74 |
+| 26.2 | 25 이상 | 107.1 | 134 |
+| 26.3 | 25 이상 | 121.0 | 211, 218 |
+
+- **Java 21 호환 JAR여도 26.1 이상 서버는 Java 25 이상이 필요합니다.** 실제 실행 검증은 1.21.x에서 Java 21, 26.x에서 Java 25로 진행했습니다. Java 요구사항은 [Paper 공식 문서](https://docs.papermc.io/paper/getting-started/#requirements)를 참고하세요.
+- 표에 있는 Minecraft 버전의 다른 Paper 빌드에서는 웹 인증·파일 관리·템플릿 생성을 제공하지만, **변경사항 적용은 위 검증 빌드에서만 활성화**합니다.
+- **1.21.9 이전 버전과 표에 없는 Minecraft 버전·스냅샷은 지원하지 않습니다.** 향후 버전까지 자동으로 호환된다는 의미는 아니며, 미등록 버전에서는 플러그인을 비활성화합니다.
+- Paper용 플러그인으로, Spigot·Folia 및 다른 서버 구현체의 호환성은 보증하지 않습니다.
+
+Paper 1.21.9-59와 26.1.1-29는 공식 다운로드의 ALPHA 빌드로 호환성을 확인했습니다. 공식 Paper 다운로드에 26.1 단독 버전은 없어, 26.1 계열의 실제 지원·검증 대상은 26.1.1과 26.1.2입니다.
 
 ## 현재 기능
 
@@ -35,7 +54,7 @@ web:
 
 **직접 HTTP는 암호화되지 않습니다.** 인증 정보와 파일 전송을 암호화하려면 아래 HTTPS 프록시 모드를 사용하세요. Cloudflare DNS를 이용할 때 직접 접속 주소는 **DNS only**로 설정합니다. HSTS가 적용된 도메인에서는 브라우저가 HTTPS로 바꿀 수 있으므로 별도 주소 또는 HTTPS 모드를 사용하세요.
 
-이 테스트판에서는 헤더 크기 제한 옵션을 실제 JDK 속성인 `sun.net.httpserver.maxReqHeaderSize`로 확인합니다. 이전 안내의 `jdk.httpserver.maxReqHeaderSize`를 사용 중이라면 시작 명령에서 아래 옵션으로 바꿔 주세요. 잘못된 옵션만 있으면 웹 리스너를 열지 않습니다.
+1.3.0에서는 헤더 크기 제한 옵션을 실제 JDK 속성인 `sun.net.httpserver.maxReqHeaderSize`로 확인합니다. 이전 안내의 `jdk.httpserver.maxReqHeaderSize`를 사용 중이라면 시작 명령에서 아래 옵션으로 바꿔 주세요. 잘못된 옵션만 있으면 웹 리스너를 열지 않습니다.
 
 내장 웹서버의 연결·헤더 제한을 위해 아래 JVM 옵션을 서버 시작 명령의 `-jar` 앞에 넣어야 합니다. 기존 설치에 이미 있다면 유지합니다.
 
@@ -74,17 +93,7 @@ React 등 포함된 외부 구성요소에는 각자의 라이선스가 적용�
 
 ## 서버 버전과 템플릿
 
-| Minecraft 버전 | 데이터팩 형식 | 웹 적용 검증 Paper 빌드 |
-|---|---|---|
-| 1.21.9 | 88.0 | 59 |
-| 1.21.10 | 88.0 | 130 |
-| 1.21.11 | 94.1 | 132 |
-| 26.1.1 | 101.1 | 29 |
-| 26.1.2 | 101.1 | 74 |
-| 26.2 | 107.1 | 134 |
-| 26.3 | 121.0 | 211, 218 |
-
-플러그인 바이트코드는 Java 21을 대상으로 합니다. Paper 1.21.9–1.21.11은 Java 21에서, 26.1 이상은 Java 25에서 검증합니다. Paper 1.21.9-59와 26.1.1-29는 공식 다운로드의 ALPHA 빌드이며 호환 확인 대상으로 사용했습니다. 공식 Paper 다운로드에 26.1 단독 버전은 없으므로 실제 검증 범위는 위 표를 따릅니다. 알려진 Minecraft 버전의 다른 Paper 빌드에서는 웹 인증·파일 관리·템플릿을 제공하되, 리로드 완료 방식을 검증하지 않은 빌드의 웹 적용은 비활성화합니다. 미등록 Minecraft 버전·스냅샷에서는 형식을 추측하지 않고 플러그인을 비활성화합니다. Spigot·Folia 호환을 보증하지 않습니다.
+지원 버전·Java 요구사항·데이터팩 형식과 웹 적용 검증 빌드는 위 **지원 버전** 표를 따릅니다. 플러그인 바이트코드는 Java 21을 대상으로 빌드합니다.
 
 템플릿의 대상 버전은 서버에서 결정하며 클라이언트가 지정하지 않습니다. ZIP에는 `pack.mcmeta`, 작성자·버전 안내를 담은 `README.txt`, 주석만 있는 `data/<namespace>/function/main.mcfunction`을 넣습니다. `load`/`tick` 자동 실행 등록, 서버 파일 생성, 데이터 리로드는 하지 않습니다. 내용을 작성한 뒤 기존 ZIP 업로드와 변경사항 적용을 사용하세요.
 
@@ -159,7 +168,7 @@ apply:
 
 Windows에서는 `gradlew.bat build`. Gradle은 `npm ci` → TypeScript 검사·Vite 빌드 → Java 컴파일 → JAR 패키징을 수행합니다. 실행 시에는 Node/npm/Gradle이 필요하지 않습니다.
 
-결과: `build/libs/remote-datapack-1.2.0-java21-SNAPSHOT.jar`.
+결과: `build/libs/remote-datapack-1.3.0.jar`.
 
 `gradle.lockfile`, `gradle/verification-metadata.xml`, `frontend/package-lock.json`으로 의존성을 고정합니다. Paper API는 `compileOnly`이며 JAR에 포함하지 않습니다. 운영 라이브러리를 런타임에 추가 다운로드하는 플러그인 설정도 없습니다. 빌드 산출물의 파일 순서와 타임스탬프를 고정합니다.
 

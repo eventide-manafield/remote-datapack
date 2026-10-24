@@ -1,7 +1,7 @@
 plugins { java }
 
 group = "studio.manafield"
-version = "1.2.0-java21-SNAPSHOT"
+version = "1.3.0"
 val pluginVersion = version.toString()
 
 java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
@@ -68,6 +68,7 @@ val webManifest = tasks.register("webManifest") {
 }
 tasks.processResources {
     dependsOn(webManifest)
+    inputs.property("pluginVersion", pluginVersion)
     filesMatching("plugin.yml") { expand("version" to pluginVersion) }
     from("frontend/dist") { into("web") }
     from(layout.buildDirectory.file("generated/web-assets.list"))
