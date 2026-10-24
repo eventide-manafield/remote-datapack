@@ -4,6 +4,8 @@
 
 Minecraft/Paper **26.3**, Java **25**용 단일 JAR 플러그인입니다.
 
+[**최신 릴리스 · 1.1.0 다운로드**](https://github.com/eventide-manafield/remote-datapack/releases/tag/1.1.0)
+
 ## 현재 기능
 
 - `/remotedatapack` 또는 `/rdpack`: 접속 중이며 `remotedatapack.manage` 권한을 가진 플레이어에게 본인용 일회용 링크 발급. 권한 기본값은 `op`입니다.
