@@ -1,9 +1,12 @@
 # ZIP changes never reload automatically. Apply explicitly after confirmation.
 web:
   enabled: true
-  bind: 127.0.0.1
-  port: 8765
-  public-url: ""
+  # direct-http: forward this TCP port. https-proxy: use a loopback HTTPS proxy.
+  mode: direct-http
+  bind: 0.0.0.0
+  port: 13532
+  # Required for authentication. Use your actual external address and forwarded port.
+  public-url: "" # Example: "http://mc.example.com:13532"
   # Explicit loopback HTTP development mode. Never proxy/publish this mode.
   local-development: false
   workers: 4

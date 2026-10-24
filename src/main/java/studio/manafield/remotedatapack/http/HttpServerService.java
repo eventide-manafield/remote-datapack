@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** Loopback web assets, liveness and optional authenticated session endpoints. */
+/** Web assets, liveness and optional authenticated session endpoints. */
 public final class HttpServerService implements AutoCloseable {
     private final HttpServer server;
     private final ThreadPoolExecutor workers;
@@ -63,8 +63,8 @@ public final class HttpServerService implements AutoCloseable {
             apply = auth == null || coordinator == null ? null : new ApplyHttpHandler(auth,access,gate,coordinator);
             created.setExecutor(workers);
             created.createContext("/", this::handle);
-            created.start();
             server = created;
+            created.start();
         } catch (IOException | RuntimeException e) {
             if (createdAuth != null) createdAuth.close();
             if (created != null) created.stop(0);
@@ -164,8 +164,23 @@ public final class HttpServerService implements AutoCloseable {
             return authority.getHost() != null && authority.getRawUserInfo() == null
                     && authority.getRawQuery() == null && authority.getRawFragment() == null
                     && authority.getRawPath().isEmpty()
-                    && allowedHosts.contains(authority.getHost().toLowerCase(java.util.Locale.ROOT));
+                    && authority.getPort() != 0 && authority.getPort() <= 65535
+                    && !hosts.getFirst().endsWith(":")
+                    && (config.directHttp() ? directHost(authority)
+                    : allowedHosts.contains(authority.getHost().toLowerCase(java.util.Locale.ROOT)));
         } catch (IllegalArgumentException e) { return false; }
+    }
+
+    private boolean directHost(URI authority) {
+        String host = authority.getHost().toLowerCase(java.util.Locale.ROOT);
+        int port = authority.getPort() == -1 ? 80 : authority.getPort();
+        // Keep loopback health checks available without trusting arbitrary external Host headers.
+        if (Set.of("localhost", "127.0.0.1", "[::1]", "[0:0:0:0:0:0:0:1]").contains(host)
+                && port == server.getAddress().getPort()) return true;
+        if (config.publicUrl().isEmpty()) return false;
+        URI expected = URI.create(config.publicUrl());
+        return host.equals(expected.getHost().toLowerCase(java.util.Locale.ROOT))
+                && port == (expected.getPort() == -1 ? 80 : expected.getPort());
     }
 
     private static boolean hasBody(HttpExchange exchange) {

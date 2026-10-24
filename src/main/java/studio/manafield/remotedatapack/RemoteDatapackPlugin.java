@@ -111,7 +111,8 @@ public final class RemoteDatapackPlugin extends JavaPlugin implements Listener {
                     return true;
                 });
                 logger.info("Web listener ready on " + config.bind().getHostAddress() + ":" + candidate.port() + ". Datapack ZIP management enabled; explicit apply enabled on supported build; activation changes disabled.");
-                if (candidate.authOrigin().isEmpty()) logger.info("Authentication unavailable: configure HTTPS web.public-url and trusted game identity.");
+                if (candidate.authOrigin().isEmpty()) logger.info("Authentication unavailable: configure web.public-url for the selected web.mode and trusted game identity.");
+                if (config.directHttp()) logger.warning("Direct HTTP enabled: session credentials and uploads are not encrypted. Public URL and TCP port forwarding must match your configuration.");
                 if (auth.localDevelopment()) logger.warning("Local HTTP development cookies enabled. This mode must not be published through a proxy.");
             } catch (Exception e) {
                 if(apply!=null)apply.close();
@@ -203,7 +204,7 @@ public final class RemoteDatapackPlugin extends JavaPlugin implements Listener {
         if (args.length != 0) return false;
         HttpServerService listener = web.get();
         if (manager == null || listener == null || listener.authOrigin().isEmpty()) {
-            player.sendMessage("인증을 사용할 수 없습니다. HTTPS web.public-url과 서버 인증 설정을 확인하세요."); return true;
+            player.sendMessage("인증을 사용할 수 없습니다. web.mode, web.public-url과 서버 인증 설정을 확인하세요."); return true;
         }
         try {
             String token = manager.issue(player.getUniqueId());

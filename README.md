@@ -10,6 +10,31 @@ Minecraft/Paper **26.3**, Java **25**용 단일 JAR 플러그인입니다.
 - `/rdpack status`: 본인의 링크·세션 개수와 웹 구동 상태. 콘솔에서는 구동 상태만 확인합니다.
 - `/rdpack revoke`: 해당 플레이어의 모든 미사용 링크와 웹 세션 회수.
 
+## 빠른 설정 · 직접 HTTP
+
+JAR를 `plugins/`에 넣고 서버를 시작한 뒤, 생성된 `plugins/RemoteDatapack/config.yml`에서 외부 주소를 입력합니다.
+
+```yaml
+web:
+  mode: direct-http
+  bind: 0.0.0.0
+  port: 13532
+  public-url: "http://mc.example.com:13532"
+  local-development: false
+```
+
+`mc.example.com` 대신 서버의 공인 IP 또는 도메인을 사용하세요. 서버를 정상 재시작하고, 방화벽과 공유기에서 **TCP 13532**를 허용·포트포워딩합니다. Docker에서는 컨테이너 포트도 게시해야 합니다. 게임 접속 포트와 별개이며 UDP는 필요하지 않습니다. 외부 포트를 다르게 연결했다면 `public-url`에는 외부 포트를 입력합니다.
+
+게임에서 `/rdpack`을 실행하면 설정한 주소의 인증 링크가 발급됩니다. 주소를 비워두면 인증이 비활성화됩니다. 이미 쓰는 포트라면 다른 번호로 변경하세요. 설정은 정상 재시작 후 반영됩니다.
+
+**직접 HTTP는 암호화되지 않습니다.** 인증 정보와 파일 전송을 암호화하려면 아래 HTTPS 프록시 모드를 사용하세요. Cloudflare DNS를 이용할 때 직접 접속 주소는 **DNS only**로 설정합니다. HSTS가 적용된 도메인에서는 브라우저가 HTTPS로 바꿀 수 있으므로 별도 주소 또는 HTTPS 모드를 사용하세요.
+
+내장 웹서버의 연결·헤더 제한을 위해 아래 JVM 옵션을 서버 시작 명령의 `-jar` 앞에 넣어야 합니다. 기존 설치에 이미 있다면 유지합니다.
+
+```text
+-Dsun.net.httpserver.maxReqTime=10 -Dsun.net.httpserver.maxRspTime=10 -Djdk.httpserver.maxConnections=64 -Dsun.net.httpserver.maxReqHeaders=64 -Dsun.net.httpserver.maxReqHeaderSize=16384
+```
+
 ## 사용 예시
 
 1. 게임에 접속한 관리자가 `/rdpack`을 입력합니다. `remotedatapack.manage` 권한이 필요하며 기본값은 OP입니다.
@@ -104,22 +129,25 @@ apply:
 
 Windows에서는 `gradlew.bat build`. Gradle은 `npm ci` → TypeScript 검사·Vite 빌드 → Java 컴파일 → JAR 패키징을 수행합니다. 실행 시에는 Node/npm/Gradle이 필요하지 않습니다.
 
-결과: `build/libs/remote-datapack-1.0.0.jar`.
+결과: `build/libs/remote-datapack-1.1.0.jar`.
 
 `gradle.lockfile`, `gradle/verification-metadata.xml`, `frontend/package-lock.json`으로 의존성을 고정합니다. Paper API는 `compileOnly`이며 JAR에 포함하지 않습니다. 운영 라이브러리를 런타임에 추가 다운로드하는 플러그인 설정도 없습니다. 빌드 산출물의 파일 순서와 타임스탬프를 고정합니다.
 
 ## 외부 접속과 인증 경계
 
-웹 바인딩은 **루프백 IP만 허용**합니다. `0.0.0.0`, 사설/공인 IP, DNS 이름으로 직접 HTTP를 공개하는 설정은 거부합니다. 기본 설정은 인증을 열지 않습니다. HTTPS 공개 URL 또는 명시적 로컬 개발 설정이 필요합니다.
+`web.mode: direct-http`는 외부 IP 바인딩과 HTTP 공개 주소를 허용합니다. `web.mode: https-proxy`는 루프백 바인딩과 HTTPS 공개 주소만 허용합니다. 기존 설정에 `web.mode`가 없으면 HTTPS 프록시 모드로 해석하므로 업데이트만으로 외부 HTTP 접속이 열리지 않습니다. 기존에 명시한 포트도 유지됩니다.
 
-외부 접속 시 운영자가 같은 네트워크 네임스페이스에서 접근 가능한 HTTPS 리버스 프록시를 구성하고, `web.public-url`에 `https://packs.example.com` 같은 **HTTPS origin**을 설정해야 합니다. 프록시는 Host를 해당 호스트명 또는 `localhost`로 전달해야 합니다. 경로 접두어, userinfo, query, fragment는 허용하지 않습니다. `X-Forwarded-*`로 공개 URL이나 권한을 결정하지 않습니다. 프록시에도 요청 크기·연결 수·헤더 시간 제한을 설정합니다.
+HTTPS 프록시 모드에서는 운영자가 루프백 리스너에 접근 가능한 리버스 프록시를 구성합니다. Docker의 컨테이너 루프백은 호스트 루프백과 다르므로 같은 네트워크 네임스페이스 등 적절한 연결이 필요합니다. 프록시는 Host를 공개 주소 또는 `localhost`로 전달하고 요청 크기·연결 수·헤더 시간 제한을 설정합니다.
 
-Docker에서 컨테이너의 `127.0.0.1`은 호스트나 다른 프록시 컨테이너의 루프백과 다릅니다. 포트 publish만 추가해도 이 리스너에는 연결되지 않습니다. HTTPS 프록시는 Minecraft 컨테이너의 루프백 리스너에 접근할 수 있는 네트워크 구성이 필요합니다.
+모든 모드에서 경로 접두어, userinfo, query, fragment가 붙은 공개 주소는 거부합니다. `X-Forwarded-*`로 공개 URL이나 권한을 결정하지 않습니다. 직접 HTTP에서는 설정된 공개 Host와 포트만 받으며, 루프백 health 점검도 허용합니다.
 
-운영 설정 예시:
+HTTPS 프록시 설정 예시:
 
 ```yaml
 web:
+  mode: https-proxy
+  bind: 127.0.0.1
+  port: 13532
   public-url: "https://packs.example.com"
   local-development: false
 auth:
@@ -130,11 +158,13 @@ auth:
   session-ttl-minutes: 30
 ```
 
-실제 `config.yml`의 다른 필드는 그대로 유지합니다. 운영 쿠키는 `__Host-remotedatapack_session; Secure; HttpOnly; SameSite=Strict; Path=/`이며 Domain은 없습니다. 세션 ID와 토큰은 SHA-256 해시를 키로 메모리에만 저장합니다. 쿠키는 브라우저 세션 쿠키지만 서버는 기본 30분 절대 만료와 30분 유휴 만료를 검사합니다. 폴링은 유휴 시간을 갱신해도 절대 만료를 연장하지 않습니다.
+실제 `config.yml`의 다른 필드는 그대로 유지합니다. HTTPS 프록시 쿠키는 `__Host-remotedatapack_session; Secure; HttpOnly; SameSite=Strict; Path=/`이며 Domain은 없습니다. 세션 ID와 토큰은 SHA-256 해시를 키로 메모리에만 저장합니다. 쿠키는 브라우저 세션 쿠키지만 서버는 기본 30분 절대 만료와 30분 유휴 만료를 검사합니다. 폴링은 유휴 시간을 갱신해도 절대 만료를 연장하지 않습니다.
 
 `online-mode=true`를 기본 신원 근거로 사용합니다. 오프라인 모드는 인증을 차단합니다. 인증된 프록시 전달 및 직접 게임 접속 차단을 운영자가 보장한 경우에만 `auth.trust-proxy-identity: true`를 명시할 수 있습니다. 이 설정은 프록시 인증을 구현하거나 검증하지 않습니다.
 
-로컬 HTTP 개발은 `web.local-development: true`, 빈 `web.public-url`로만 활성화합니다. 이때 별도 이름 `remotedatapack_dev_session`과 `HttpOnly; SameSite=Strict; Path=/`를 사용하며 Secure만 생략합니다. 바인딩된 루프백 IP와 실제 포트로 링크를 만들고 프록시 공개 URL과 함께 설정하면 시작을 거부합니다. 이 개발 모드를 외부에 게시하지 마세요.
+직접 HTTP 쿠키는 공개 주소별 이름 `remotedatapack_http_<주소 해시>`와 `HttpOnly; SameSite=Strict; Path=/`를 사용하고 Secure와 Domain은 붙이지 않습니다. HTTPS·개발 쿠키와 구분하며 포트가 다른 인스턴스 간 이름 충돌을 줄입니다. 쿠키 자체는 포트별로 격리되지 않으므로 같은 호스트의 다른 서비스도 신뢰할 수 있어야 합니다. 모드·주소 변경이나 서버 재시작 후에는 새 링크로 인증해야 합니다.
+
+로컬 HTTP 개발은 `web.mode: https-proxy`, 루프백 바인딩, `web.local-development: true`, 빈 `web.public-url`로만 활성화합니다. 이때 별도 이름 `remotedatapack_dev_session`과 `HttpOnly; SameSite=Strict; Path=/`를 사용하며 Secure만 생략합니다. 바인딩된 루프백 IP와 실제 포트로 링크를 만들고 프록시 공개 URL과 함께 설정하면 시작을 거부합니다. 이 개발 모드를 외부에 게시하지 마세요.
 
 인증 링크는 `/#/auth/<token>` 형태입니다. fragment는 HTTP 요청·Referer에 들어가지 않으며 JS가 즉시 주소창에서 제거하고 동일 출처 JSON POST로 교환합니다. 브라우저는 동일 출처 자산만 요청하며, 스킨 이미지는 서버가 공식 텍스처 서버에서 가져와 전달합니다. `no-referrer`, CSP, `no-store`, `nosniff`, 프레임 차단을 유지합니다. 토큰·쿠키·CSRF 값과 접근 URL은 플러그인 로그에 기록하지 않습니다. 프록시에서도 요청 본문·Cookie·Set-Cookie를 수집하지 않도록 설정하세요. 링크를 탈취해 먼저 사용한 사람은 세션을 얻을 수 있으므로 공유하면 안 됩니다.
 

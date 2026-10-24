@@ -5,16 +5,18 @@ import java.util.Map;
 import java.util.Locale;
 import java.net.URI;
 
-public record AuthConfig(boolean localDevelopment, boolean trustProxyIdentity, int idleMinutes, int sessionMinutes) {
+public record AuthConfig(boolean localDevelopment, boolean trustProxyIdentity, int idleMinutes, int sessionMinutes, boolean directHttp, String cookieScope) {
     public static AuthConfig from(Map<String, Object> values, WebConfig web) {
         boolean local = bool(values, "web.local-development");
+        if (local && (web.directHttp() || !web.bind().isLoopbackAddress()))
+            throw new IllegalArgumentException("Local development requires loopback HTTPS-proxy mode");
         if (local && !web.publicUrl().isEmpty()) throw new IllegalArgumentException("Local development cannot use web.public-url");
         if (number(values, "auth.link-ttl-seconds", 60, 60, 60) != 60
                 || number(values, "auth.max-sessions-per-player", 1, 1, 1) != 1) throw new IllegalArgumentException("Unsupported auth policy");
         number(values, "ui.session-poll-seconds", 5, 5, 5);
         return new AuthConfig(local, bool(values, "auth.trust-proxy-identity"),
                 number(values, "auth.idle-timeout-minutes", 30, 1, 1440),
-                number(values, "auth.session-ttl-minutes", 30, 1, 1440));
+                number(values, "auth.session-ttl-minutes", 30, 1, 1440), web.directHttp(), scope(web));
     }
     private static boolean bool(Map<String, Object> values, String key) {
         Object value = values.getOrDefault(key, false);
@@ -30,15 +32,31 @@ public record AuthConfig(boolean localDevelopment, boolean trustProxyIdentity, i
     public String origin(WebConfig web, int actualPort) {
         if (!localDevelopment) {
             if (web.publicUrl().isEmpty()) return "";
-            URI uri = URI.create(web.publicUrl());
-            return "https://" + uri.getHost().toLowerCase(Locale.ROOT)
-                    + (uri.getPort() == -1 || uri.getPort() == 443 ? "" : ":" + uri.getPort());
+            return canonicalOrigin(web.publicUrl());
         }
         return "http://" + (web.bind().getAddress().length == 16 ? "[::1]" : web.bind().getHostAddress()) + ":" + actualPort;
     }
-    public String cookieName() { return localDevelopment ? "remotedatapack_dev_session" : "__Host-remotedatapack_session"; }
+    private static String canonicalOrigin(String url) {
+        URI uri = URI.create(url);
+        int standardPort = uri.getScheme().equals("https") ? 443 : 80;
+        return uri.getScheme() + "://" + uri.getHost().toLowerCase(Locale.ROOT)
+                + (uri.getPort() == -1 || uri.getPort() == standardPort ? "" : ":" + uri.getPort());
+    }
+    private static String scope(WebConfig web) {
+        // Cookies have no port isolation. Distinct names avoid accidental cross-instance replacement.
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256").digest(
+                    (web.publicUrl().isEmpty() ? "" : canonicalOrigin(web.publicUrl()))
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash, 0, 8);
+        } catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
+    }
+    public String cookieName() {
+        if (localDevelopment) return "remotedatapack_dev_session";
+        return directHttp ? "remotedatapack_http_" + cookieScope : "__Host-remotedatapack_session";
+    }
     public String cookie(String value, boolean clear) {
         return cookieName() + "=" + value + "; Path=/; HttpOnly; SameSite=Strict"
-                + (localDevelopment ? "" : "; Secure") + (clear ? "; Max-Age=0" : "");
+                + (localDevelopment || directHttp ? "" : "; Secure") + (clear ? "; Max-Age=0" : "");
     }
 }
