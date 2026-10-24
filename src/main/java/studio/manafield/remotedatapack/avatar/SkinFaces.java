@@ -29,12 +29,38 @@ public final class SkinFaces implements AutoCloseable {
         loader = uri -> {
             var request = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(3))
                     .header("Accept", "image/png").header("User-Agent", "RemoteDatapack/0.1").GET().build();
-            var response = client.send(request, HttpResponse.BodyHandlers.limiting(HttpResponse.BodyHandlers.ofByteArray(), MAX_BYTES));
+            var response = client.send(request, info -> new LimitedBody(MAX_BYTES));
             if (response.statusCode() != 200) throw new IOException("Skin unavailable");
             return response.body();
         };
         clock = System::nanoTime;
     }
+    /** Bounded Java 21 byte-array subscriber; cancel before forwarding an oversized chunk. */
+    static final class LimitedBody implements HttpResponse.BodySubscriber<byte[]> {
+        private final HttpResponse.BodySubscriber<byte[]> delegate = HttpResponse.BodySubscribers.ofByteArray();
+        private final long limit;
+        private long received;
+        private java.util.concurrent.Flow.Subscription subscription;
+        private boolean done;
+        LimitedBody(long limit) { this.limit = limit; }
+        public java.util.concurrent.CompletionStage<byte[]> getBody() { return delegate.getBody(); }
+        public void onSubscribe(java.util.concurrent.Flow.Subscription subscription) {
+            this.subscription = subscription; delegate.onSubscribe(subscription);
+        }
+        public void onNext(java.util.List<java.nio.ByteBuffer> buffers) {
+            if (done) return;
+            for (var buffer : buffers) {
+                received += buffer.remaining();
+                if (received > limit) {
+                    done = true; subscription.cancel(); delegate.onError(new IOException("Skin too large")); return;
+                }
+            }
+            delegate.onNext(buffers);
+        }
+        public void onError(Throwable error) { if (!done) { done = true; delegate.onError(error); } }
+        public void onComplete() { if (!done) { done = true; delegate.onComplete(); } }
+    }
+
     SkinFaces(Loader loader, LongSupplier clock) { this.client = null; this.loader = loader; this.clock = clock; }
 
     /** Rebuild the URL, allowing only the official host and a texture hash, always over HTTPS. */

@@ -18,8 +18,23 @@ public record WebConfig(boolean enabled, InetAddress bind, int port, String publ
         String bindText = string(values, "web.bind", direct ? "0.0.0.0" : "127.0.0.1");
         InetAddress bind;
         try {
-            bind = InetAddress.ofLiteral(bindText);
-        } catch (IllegalArgumentException e) {
+            // Java 21: validate numeric-only syntax before calling the legacy address parser.
+            if (!bindText.contains(":")) {
+                String[] parts = bindText.split("\\.", -1);
+                if (parts.length != 4) throw new IllegalArgumentException();
+                byte[] address = new byte[4];
+                for (int i = 0; i < 4; i++) {
+                    if (!parts[i].matches("0|[1-9][0-9]{0,2}") || Integer.parseInt(parts[i]) > 255)
+                        throw new IllegalArgumentException();
+                    address[i] = (byte) Integer.parseInt(parts[i]);
+                }
+                bind = InetAddress.getByAddress(address);
+            } else {
+                if (!bindText.matches("[0-9a-fA-F:.]+")) throw new IllegalArgumentException();
+                // A colon forces IPv6 literal parsing; hostnames and scoped addresses never reach DNS.
+                bind = InetAddress.getByName(bindText);
+            }
+        } catch (IllegalArgumentException | java.net.UnknownHostException e) {
             throw invalid("web.bind must be a numeric IP address");
         }
         // External listeners require the explicit direct HTTP mode.

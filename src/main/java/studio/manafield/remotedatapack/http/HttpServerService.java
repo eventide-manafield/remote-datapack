@@ -36,8 +36,9 @@ public final class HttpServerService implements AutoCloseable {
     private final FileService fileService;
     private final ApplyHttpHandler apply;
     private final ApplyCoordinator coordinator;
+    private final TemplatesHttpHandler templates;
 
-    private HttpServerService(WebConfig config, WebAssets assets, AuthConfig authConfig, AccessManager access, MainThreadGate gate, DatapackService datapacks, FileService fileService, ApplyCoordinator coordinator) throws IOException {
+    private HttpServerService(WebConfig config, WebAssets assets, AuthConfig authConfig, AccessManager access, MainThreadGate gate, DatapackService datapacks, FileService fileService, ApplyCoordinator coordinator, studio.manafield.remotedatapack.datapack.PackFormat format) throws IOException {
         this.coordinator=coordinator;
         this.fileService = fileService;
         this.config = config;
@@ -61,6 +62,7 @@ public final class HttpServerService implements AutoCloseable {
             packs = auth == null || datapacks == null ? null : new PacksHttpHandler(auth, access, gate, datapacks);
             files = auth == null || fileService == null ? null : new FilesHttpHandler(auth, access, gate, fileService);
             apply = auth == null || coordinator == null ? null : new ApplyHttpHandler(auth,access,gate,coordinator);
+            templates = auth == null || format == null ? null : new TemplatesHttpHandler(auth, access, gate, format);
             created.setExecutor(workers);
             created.createContext("/", this::handle);
             server = created;
@@ -76,28 +78,34 @@ public final class HttpServerService implements AutoCloseable {
 
     public static HttpServerService start(WebConfig config, WebAssets assets) throws IOException {
         HttpServerLimits.validate();
-        return new HttpServerService(config, assets, null, null, null, null, null, null);
+        return new HttpServerService(config, assets, null, null, null, null, null, null, null);
     }
 
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig, AccessManager access, MainThreadGate gate) throws IOException {
         HttpServerLimits.validate();
-        return new HttpServerService(config, assets, authConfig, access, gate, null, null, null);
+        return new HttpServerService(config, assets, authConfig, access, gate, null, null, null, null);
     }
 
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig,
                                           AccessManager access, MainThreadGate gate, DatapackService datapacks) throws IOException {
         HttpServerLimits.validate();
-        return new HttpServerService(config, assets, authConfig, access, gate, datapacks, null, null);
+        return new HttpServerService(config, assets, authConfig, access, gate, datapacks, null, null, null);
     }
 
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig,
                                           AccessManager access, MainThreadGate gate, DatapackService datapacks, FileService files) throws IOException {
         HttpServerLimits.validate();
-        return new HttpServerService(config, assets, authConfig, access, gate, datapacks, files, null);
+        return new HttpServerService(config, assets, authConfig, access, gate, datapacks, files, null, null);
     }
     public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig,
             AccessManager access, MainThreadGate gate, DatapackService datapacks, FileService files, ApplyCoordinator coordinator) throws IOException {
-        HttpServerLimits.validate();return new HttpServerService(config,assets,authConfig,access,gate,datapacks,files,coordinator);
+        HttpServerLimits.validate();return new HttpServerService(config,assets,authConfig,access,gate,datapacks,files,coordinator,null);
+    }
+    public static HttpServerService start(WebConfig config, WebAssets assets, AuthConfig authConfig,
+            AccessManager access, MainThreadGate gate, DatapackService datapacks, FileService files,
+            ApplyCoordinator coordinator, studio.manafield.remotedatapack.datapack.PackFormat format) throws IOException {
+        HttpServerLimits.validate();
+        return new HttpServerService(config, assets, authConfig, access, gate, datapacks, files, coordinator, format);
     }
     public String authOrigin() { return auth == null ? "" : auth.origin(); }
 
@@ -126,6 +134,7 @@ public final class HttpServerService implements AutoCloseable {
             if (path.length() > 2048 || exchange.getRequestURI().toASCIIString().length() > 4096) {
                 json(exchange, 414, "uri_too_long"); return;
             }
+            if (templates != null && path.equals("/api/templates")) { templates.handle(exchange); return; }
             if (apply != null && (path.equals("/api/apply") || path.equals("/api/packs/apply"))) {apply.handle(exchange);return;}
             if (files != null && files.matches(path)) { files.handle(exchange); return; }
             if (packs != null && path.equals("/api/packs")) { packs.handle(exchange); return; }

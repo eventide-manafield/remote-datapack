@@ -7,7 +7,7 @@ import org.bukkit.Server;
 import org.bukkit.event.*;
 import studio.manafield.remotedatapack.auth.AuthFailure;
 
-/** Uses only public APIs. Completion contract verified specifically against Paper 26.3 build 211. */
+/** Uses only public APIs. Completion contracts are verified against the builds listed in PackFormat. */
 public final class PaperReload implements Listener {
     private final Server server;
     private boolean invoking;
@@ -15,15 +15,18 @@ public final class PaperReload implements Listener {
     public PaperReload(Server server) {this.server=server;}
     public static boolean supported() {
         var build=ServerBuildInfo.buildInfo();
-        return build.brandId().equals(ServerBuildInfo.BRAND_PAPER_ID) && build.minecraftVersionId().equals("26.3")
-                && build.buildNumber().orElse(-1)==211;
+        try {
+            return build.brandId().equals(ServerBuildInfo.BRAND_PAPER_ID)
+                    && studio.manafield.remotedatapack.datapack.PackFormat.forVersion(build.minecraftVersionId())
+                    .reloadBuilds().contains(build.buildNumber().orElse(-1));
+        } catch (IllegalArgumentException unsupported) { return false; }
     }
     public void reload() {
         if(!Bukkit.isPrimaryThread())throw new IllegalStateException("Reload must run on main thread");
         if(!supported() || invoking)throw new AuthFailure(503,"apply_unsupported_build");
         invoking=true;completions=0;
         try {
-            // Build 211 pumps its main executor until its internal reload future finishes, then returns.
+            // Verified builds pump their main executor until the internal reload future finishes, then return.
             // A failed future is NOT thrown by this void API. Require its official success event too.
             server.reloadData();
             if(completions!=1)throw new AuthFailure(503,"reload_completion_unconfirmed");

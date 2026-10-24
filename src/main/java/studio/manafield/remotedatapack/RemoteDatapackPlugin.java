@@ -54,7 +54,14 @@ public final class RemoteDatapackPlugin extends JavaPlugin implements Listener {
         active.set(true);
         status = "시작 중";
         Path directory = getDataFolder().toPath();
-        Path levelDirectory = getServer().getLevelDirectory();
+        PackFormat format;
+        try { format = PackFormat.forVersion(getServer().getMinecraftVersion()); }
+        catch (IllegalArgumentException unsupported) {
+            getLogger().severe(unsupported.getMessage());
+            getServer().getPluginManager().disablePlugin(this); return;
+        }
+        Path levelDirectory = PaperLevelDirectory.resolve(getServer());
+        if (levelDirectory == null) getLogger().warning("Main level directory unavailable through public API; local file management disabled.");
         ClassLoader resources = getClass().getClassLoader();
         var logger = getLogger();
         boolean onlineMode = getServer().getOnlineMode();
@@ -97,17 +104,17 @@ public final class RemoteDatapackPlugin extends JavaPlugin implements Listener {
                 var localPacks = new LocalPackScanner(levelDirectory, values.getOrDefault("packs.directory", "auto"));
                 var datapacks = new DatapackService(() -> PaperPacks.snapshot(getServer()), localPacks::scan);
                 files = new FileService(localPacks.root(), FileConfig.from(values), manager, runGate, datapacks,
-                        (name, deleted) -> PaperPacks.refresh(getServer(), name, deleted), line -> logger.info("Audit " + line));
+                        (name, deleted) -> PaperPacks.refresh(getServer(), name, deleted), line -> logger.info("Audit " + line), format);
                 apply=new ApplyCoordinator(ApplyCoordinator.cooldown(values),System::nanoTime,
                         task->getServer().getScheduler().runTask(this,task),reload::reload,manager,line->logger.info("Audit "+line),applySupported);
                 files.coordinate(apply);datapacks.pendingSource(apply::pending);
-                candidate = HttpServerService.start(config, assets, trustedIdentity ? auth : null, manager, runGate, datapacks, files,apply);
+                candidate = HttpServerService.start(config, assets, trustedIdentity ? auth : null, manager, runGate, datapacks, files,apply,format);
                 HttpServerService readyWeb = candidate;
                 runGate.call(() -> {
                     if (!active.get() || generation.get() != epoch || !web.compareAndSet(null, readyWeb)) {
                         throw new AuthFailure(503, "auth_unavailable");
                     }
-                    status = readyWeb.authOrigin().isEmpty() ? "웹 실행 중 / 인증 설정 필요" : "웹 인증·ZIP 관리·명시적 적용 가능";
+                    status = readyWeb.authOrigin().isEmpty() ? "웹 실행 중 / 인증 설정 필요" : (applySupported ? "웹 인증·ZIP 관리·명시적 적용 가능" : "웹 인증·ZIP 관리 가능 / 이 빌드의 웹 적용은 미검증");
                     return true;
                 });
                 logger.info("Web listener ready on " + config.bind().getHostAddress() + ":" + candidate.port() + ". Datapack ZIP management enabled; explicit apply enabled on supported build; activation changes disabled.");

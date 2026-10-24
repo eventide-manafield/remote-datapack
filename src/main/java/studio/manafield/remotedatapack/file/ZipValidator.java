@@ -11,6 +11,8 @@ import java.util.zip.*;
 
 /** Does not extract files. Bounded central-directory checks plus streaming CRC/actual-size checks. */
 public final class ZipValidator {
+    private final studio.manafield.remotedatapack.datapack.PackFormat target;
+    public ZipValidator(studio.manafield.remotedatapack.datapack.PackFormat target) { this.target = java.util.Objects.requireNonNull(target); }
     private static final long MAX_EXPANDED = 128L * 1048576;
     private static final int MAX_ENTRIES = 10000, MAX_METADATA = 65536;
     private record Entry(String name, long size, long compressed, long crc, int method, long offset) { }
@@ -106,18 +108,18 @@ public final class ZipValidator {
         String[] parts=name.split("/",-1);
         for(int i=0;i<parts.length;i++) if(parts[i].equals(".") || parts[i].equals("..") || (parts[i].isEmpty() && i!=parts.length-1)) fail();
     }
-    private static void metadata(byte[] bytes) throws CharacterCodingException {
+    private void metadata(byte[] bytes) throws CharacterCodingException {
         if(bytes==null) fail(); Object json=MetadataJson.parse(decode(bytes));
         if(!(json instanceof Map<?,?> root) || !(root.get("pack") instanceof Map<?,?> pack) || !pack.containsKey("description")) fail();
         Map<?,?> pack=(Map<?,?>)((Map<?,?>)json).get("pack");
         Object description=pack.get("description");
         if(!(description instanceof String || description instanceof Map<?,?> || description instanceof List<?>)) fail();
-        // Verified 26.3 format: min_format/max_format, with [major,minor] also supported.
-        long min=format(pack.get("min_format")), max=format(pack.get("max_format"));
-        if(min>121000000L || max<121000000L || min>max) throw new AuthFailure(422,"incompatible_pack_format");
+        // Integer max_format includes all minor versions of that major (Minecraft 1.21.9+).
+        long min=format(pack.get("min_format"), false), max=format(pack.get("max_format"), true);
+        if(min>target.number() || max<target.number() || min>max) throw new AuthFailure(422,"incompatible_pack_format");
     }
-    private static long format(Object value) {
-        Object major=value, minor=BigDecimal.ZERO;
+    private static long format(Object value, boolean maximum) {
+        Object major=value, minor=maximum ? BigDecimal.valueOf(999999) : BigDecimal.ZERO;
         if(value instanceof List<?> list && list.size()==2) { major=list.get(0); minor=list.get(1); }
         if(!(major instanceof BigDecimal) || !(minor instanceof BigDecimal)) fail();
         try { long a=((BigDecimal)major).longValueExact(), b=((BigDecimal)minor).longValueExact();

@@ -24,3 +24,7 @@ main h1,main h2,main h3,main tbody th,main .confirm-box strong{color:var(--text)
 /* Product identity stays distinct from the configured server display name. */
 .brand{font-size:16px;letter-spacing:.02em}.mark{font-size:15px;letter-spacing:-.04em;font-weight:750}
 @media(max-width:640px){.brand{font-size:12px;gap:7px;letter-spacing:0}.mark{width:30px;height:30px;font-size:13px}.topbar{gap:8px}}
+
+.template-tools { margin: 1rem 0; }
+.template-fields label { display: grid; gap: .4rem; margin: .8rem 0; max-width: 40rem; }
+.template-fields input { width: 100%; min-width: 0; box-sizing: border-box; }

@@ -14,6 +14,7 @@ public final class LocalPackScanner {
     private final Path root;
 
     public LocalPackScanner(Path levelDirectory, Object configured) {
+        if (levelDirectory == null) { root = null; return; }
         Path expected = levelDirectory.toAbsolutePath().normalize().resolve("datapacks");
         // Explicit configuration can confirm the main-world directory, never select another tree.
         Path selected = null;

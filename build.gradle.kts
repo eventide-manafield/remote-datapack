@@ -1,27 +1,42 @@
 plugins { java }
 
 group = "studio.manafield"
-version = "1.1.1"
+version = "1.2.0-java21-SNAPSHOT"
 val pluginVersion = version.toString()
 
-java { toolchain.languageVersion.set(JavaLanguageVersion.of(25)) }
+java { toolchain.languageVersion.set(JavaLanguageVersion.of(21)) }
 
 repositories {
     mavenCentral()
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "paperApiArtifact"
+                url = uri("https://repo.papermc.io/repository/maven-public/")
+                metadataSources { artifact() }
+            }
+        }
+        filter { includeModule("io.papermc.paper", "paper-api") }
+    }
     maven("https://repo.papermc.io/repository/maven-public/") {
         content { includeGroupByRegex("io\\.papermc.*"); includeGroup("com.mojang"); includeGroup("net.md-5") }
     }
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.3.build.211-stable")
+    // Artifact-only: the historic POM imports a mutable Adventure SNAPSHOT BOM.
+    // Checksum-pin the API snapshot and declare the compile-time types we use explicitly.
+    compileOnly("io.papermc.paper:paper-api:1.21.9-R0.1-SNAPSHOT@jar") { isTransitive = false }
+    compileOnly("net.kyori:adventure-api:4.25.0")
+    compileOnly("org.yaml:snakeyaml:2.2")
+    compileOnly("net.md-5:bungeecord-chat:1.21-R0.2-deprecated+build.21") { isTransitive = false }
 }
 
 dependencyLocking { lockAllConfigurations() }
 
 tasks.withType<JavaCompile>().configureEach {
     options.encoding = "UTF-8"
-    options.release.set(25)
+    options.release.set(21)
 }
 
 val npmCommand = if (System.getProperty("os.name").startsWith("Windows")) "npm.cmd" else "npm"

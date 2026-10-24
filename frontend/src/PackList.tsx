@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { TemplatePanel } from './TemplatePanel';
 import { ApplyPanel, type ApplyState } from './ApplyPanel';
 
 type Pack = {
@@ -16,7 +17,7 @@ const reasons: Record<string, string> = {
 };
 const errors: Record<string, string> = {
   invalid_zip: '안전하게 검증할 수 없는 ZIP입니다. 루트 pack.mcmeta, 경로, 압축 크기와 구조를 확인해 주세요.',
-  incompatible_pack_format: 'Minecraft 26.3 데이터팩 형식(121.0)을 지원하지 않습니다.',
+  incompatible_pack_format: '현재 서버의 데이터팩 형식을 지원하지 않습니다.',
   operation_busy: '다른 파일 작업이 진행 중입니다. 완료 후 다시 시도해 주세요.',
   backup_quota_exceeded: '백업 공간이 부족합니다. 서버 관리자에게 백업 정리를 요청해 주세요.',
   confirmation_mismatch: '확인한 파일명이 현재 대상과 일치하지 않습니다.',
@@ -107,6 +108,7 @@ export function PackList({ onSessionEnded, csrf, apply, onApplyState }: { onSess
     <div className="panel-heading"><div className="section-title"><h2 id="packs-title">데이터팩 목록</h2>{listing && <span className="count">{listing.packs.length}</span>}</div>
       <button className="logout" disabled={loading || busy} onClick={() => setRevision(value => value + 1)}>목록 다시 조회</button></div>
     <p className="footnote">ZIP을 추가하거나 교체한 뒤, 변경사항 적용으로 서버에 반영하세요. 활성화·비활성화 변경은 인게임 기본 명령어로 해주세요.</p>
+    <TemplatePanel csrf={csrf} onSessionEnded={onSessionEnded} />
     {message && <p role="status" className="pack-warning">{message}</p>}
     {loading && <p role="status">목록을 불러오는 중…</p>}
     {failed && <p role="alert">목록을 불러오지 못했습니다. 잠시 후 다시 조회해 주세요.</p>}

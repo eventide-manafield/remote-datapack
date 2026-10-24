@@ -17,6 +17,7 @@ import java.util.function.Consumer;
 
 /** One disk worker, no queued writes. HTTP workers never run ZIP/backup/rename operations. */
 public final class FileService implements AutoCloseable {
+    private final ZipValidator validator;
     private final Path root; private final FileConfig config; private final AccessManager access; private final MainThreadGate gate;
     private final DatapackService packs; private final Refresh refresh; private final Consumer<String> audit;
     private final ThreadPoolExecutor io = new ThreadPoolExecutor(1,1,30,TimeUnit.SECONDS,new SynchronousQueue<>(),task->{
@@ -25,7 +26,8 @@ public final class FileService implements AutoCloseable {
     private final Map<String,Job> jobs=new LinkedHashMap<>(); private final AtomicBoolean closed=new AtomicBoolean();
     private final AtomicReference<Job> active=new AtomicReference<>();
     private boolean cleaned; private volatile boolean recoveryRequired;
-    public FileService(Path root,FileConfig config,AccessManager access,MainThreadGate gate,DatapackService packs,Refresh refresh,Consumer<String> audit) {
+    public FileService(Path root,FileConfig config,AccessManager access,MainThreadGate gate,DatapackService packs,Refresh refresh,Consumer<String> audit,PackFormat format) {
+        this.validator = new ZipValidator(format);
         this.root=root; this.config=config; this.access=access; this.gate=gate; this.packs=packs; this.refresh=refresh; this.audit=audit;
         io.allowCoreThreadTimeOut(true); if(root!=null) packs.enableFiles();
     }
@@ -90,12 +92,12 @@ public final class FileService implements AutoCloseable {
                         PackDirectory.force(output);
                     }
                     job.state="validating"; job.received.complete(job.json());
-                    try(var channel=dir.read(temp)) { new ZipValidator().validate(channel,()->check(job)); writtenHash=PackDirectory.digest(channel,config.maxBytes(),()->check(job)); }
+                    try(var channel=dir.read(temp)) { validator.validate(channel,()->check(job)); writtenHash=PackDirectory.digest(channel,config.maxBytes(),()->check(job)); }
                 }
                 check(job); job.state="backing_up";
                 if(target!=null) {
                     originalHash=dir.digest(filename,config.maxBytes(),()->check(job));
-                    try(var channel=dir.read(filename)) { new ZipValidator().validate(channel,()->check(job)); }
+                    try(var channel=dir.read(filename)) { validator.validate(channel,()->check(job)); }
                     String prefix=".rd-backup-"+nameHash(filename)+"-";
                     var backups=dir.backups(); long total=backups.stream().mapToLong(PackDirectory.Backup::bytes).sum();
                     if(total+dir.attributes(filename).size()>config.backupBytes()) throw new AuthFailure(409,"backup_quota_exceeded");
@@ -149,7 +151,7 @@ public final class FileService implements AutoCloseable {
                 check(job); var target=packs.resolve(id,snapshot(job));
                 try(var channel=dir.read(target.name())) {
                     if(channel.size()>config.maxBytes()) throw new AuthFailure(413,"file_too_large");
-                    new ZipValidator().validate(channel,()->check(job)); gate.call(()->{access.validate(lease);return true;});
+                    validator.validate(channel,()->check(job)); gate.call(()->{access.validate(lease);return true;});
                     channel.position(0); output.start(target.name(),channel.size());
                     ByteBuffer buffer=ByteBuffer.allocate(8192);
                     while(channel.read(buffer)!=-1) { check(job); output.write(buffer.array(),buffer.position()); buffer.clear(); }
